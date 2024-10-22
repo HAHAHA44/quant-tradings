@@ -7,8 +7,13 @@ use binance::config::Config;
 use binance::general::General;
 use binance::market;
 use binance::market::*;
+use binance::model::Balance;
 use trade_market::get_klines_and_plot_candlestick_chart;
 
+const CSV_HEADERS: &str = "timestamp,asset,free_balance,locked_balance";
+const ACTIVE_SYMBOLS: &[&str] = &[
+    "PEPE", "BTC", "ETH", "BNB", "USDT", "ARB", "SOL", "SHIB", "DOGE", "OP", "ORDI",
+];
 // Implement a basic quantitative trading algorithm for PEPEUSDT
 fn basic_pepe_trading_strategy(market: &Market, account: &Account) {
     println!("Starting basic quantitative trading strategy for PEPEUSDT");
@@ -73,6 +78,33 @@ fn read_api_key_and_secret(config_path: &str) -> (String, String) {
     (api_key, api_secret)
 }
 
+fn write_balance_to_csv(balance: &Balance) {
+    use chrono::Local;
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    let now = Local::now();
+    let timestamp = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open("balances.csv")
+        .expect("无法打开或创建 CSV 文件");
+
+    if file.metadata().unwrap().len() == 0 {
+        writeln!(file, "{}", CSV_HEADERS).expect("无法写入 CSV 文件头");
+    }
+
+    writeln!(
+        file,
+        "{},{},{},{}",
+        timestamp, balance.asset, balance.free, balance.locked
+    )
+    .expect("无法写入余额数据到 CSV 文件");
+}
+
 fn print_all_balances(account: &Account) {
     match account.get_account() {
         Ok(account_info) => {
@@ -80,13 +112,25 @@ fn print_all_balances(account: &Account) {
             println!("Asset\t\tFree Balance\t\tLocked Balance");
             println!("----------------------------------------");
             for balance in account_info.balances {
-                if balance.free.parse::<f64>().unwrap_or(0.0) > 0.0 || balance.locked.parse::<f64>().unwrap_or(0.0) > 0.0 {
-                    println!("{}\t\t{}\t\t{}", balance.asset, balance.free, balance.locked);
+                if is_active_symbol(&balance.asset)
+                    && (balance.free.parse::<f64>().unwrap_or(0.0) > 0.0
+                        || balance.locked.parse::<f64>().unwrap_or(0.0) > 0.0)
+                {
+                    println!(
+                        "{}\t\t{}\t\t{}",
+                        balance.asset, balance.free, balance.locked
+                    );
+
+                    write_balance_to_csv(&balance);
                 }
             }
-        },
+        }
         Err(e) => println!("Failed to get account information: {:?}", e),
     }
+}
+
+fn is_active_symbol(symbol: &str) -> bool {
+    ACTIVE_SYMBOLS.contains(&symbol)
 }
 
 fn main() {
@@ -94,11 +138,8 @@ fn main() {
 
     let config = Config::default().set_rest_api_endpoint("https://testnet.binance.vision");
 
-    let account: Account = Binance::new_with_config(
-        Some(api_key.clone()),
-        Some(api_secret.clone()),
-        &config,
-    );
+    let account: Account =
+        Binance::new_with_config(Some(api_key.clone()), Some(api_secret.clone()), &config);
     print_all_balances(&account);
     // let market: Market = Binance::new(Some(api_key), Some(secret_key));
 
