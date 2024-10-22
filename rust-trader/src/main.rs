@@ -72,16 +72,34 @@ fn read_api_key_and_secret(config_path: &str) -> (String, String) {
 
     (api_key, api_secret)
 }
+
+fn print_all_balances(account: &Account) {
+    match account.get_account() {
+        Ok(account_info) => {
+            println!("Current Account Balances:");
+            println!("Asset\t\tFree Balance\t\tLocked Balance");
+            println!("----------------------------------------");
+            for balance in account_info.balances {
+                if balance.free.parse::<f64>().unwrap_or(0.0) > 0.0 || balance.locked.parse::<f64>().unwrap_or(0.0) > 0.0 {
+                    println!("{}\t\t{}\t\t{}", balance.asset, balance.free, balance.locked);
+                }
+            }
+        },
+        Err(e) => println!("Failed to get account information: {:?}", e),
+    }
+}
+
 fn main() {
     let (api_key, api_secret) = read_api_key_and_secret("./test-secret.json");
 
     let config = Config::default().set_rest_api_endpoint("https://testnet.binance.vision");
 
-    let account: General = Binance::new_with_config(
+    let account: Account = Binance::new_with_config(
         Some(api_key.clone()),
         Some(api_secret.clone()),
         &config,
     );
+    print_all_balances(&account);
     // let market: Market = Binance::new(Some(api_key), Some(secret_key));
 
     let market: Market =
