@@ -25,3 +25,9 @@ nalgebra = "0.29.0"
 statrs = "0.15.0"
 
 serde_json = "1.0"
+
+# plotters 库用于绘图
+plotters = "0.3.1"
+
+# chrono 库用于处理日期和时间
+chrono = "0.4"
