@@ -9,6 +9,8 @@ use binance::market;
 use binance::market::*;
 use binance::model::Balance;
 use trade_market::get_klines_and_plot_candlestick_chart;
+use binance::websockets::*;
+use std::sync::atomic::{AtomicBool};
 
 const CSV_HEADERS: &str = "timestamp,asset,free_balance,locked_balance";
 const ACTIVE_SYMBOLS: &[&str] = &[
@@ -133,6 +135,38 @@ fn is_active_symbol(symbol: &str) -> bool {
     ACTIVE_SYMBOLS.contains(&symbol)
 }
 
+
+fn websocket_ticker() {
+    let keep_running = AtomicBool::new(true); // Used to control the event loop
+    let agg_trade = format!("!ticker@arr"); // All Symbols
+    let mut web_socket = WebSockets::new(|event: WebsocketEvent| {
+	match event {
+        // 24hr rolling window ticker statistics for all symbols that changed in an array.
+	    WebsocketEvent::DayTickerAll(ticker_events) => {
+	        for tick_event in ticker_events {
+		    if tick_event.symbol == "BTCUSDT" {
+			let btcusdt: f32 = tick_event.average_price.parse().unwrap();
+			let btcusdt_close: f32 = tick_event.current_close.parse().unwrap();
+			println!("{} - {}", btcusdt, btcusdt_close);
+		    }
+		}
+	    },
+	    _ => (),
+        };
+
+        Ok(())
+    });
+
+    web_socket.connect(&agg_trade).unwrap(); // check error
+    if let Err(e) = web_socket.event_loop(&keep_running) {
+	match e {
+	    err => {
+	        println!("Error: {:?}", err);
+	    }
+	}
+     }
+}
+
 fn main() {
     let (api_key, api_secret) = read_api_key_and_secret("./test-secret.json");
 
@@ -140,11 +174,18 @@ fn main() {
 
     let account: Account =
         Binance::new_with_config(Some(api_key.clone()), Some(api_secret.clone()), &config);
+
     print_all_balances(&account);
     // let market: Market = Binance::new(Some(api_key), Some(secret_key));
 
     let market: Market =
         Binance::new_with_config(Some(api_key.clone()), Some(api_secret.clone()), &config);
+
+    let general: General =
+        Binance::new_with_config(Some(api_key.clone()), Some(api_secret.clone()), &config);
+
+    websocket_ticker();
+
     // Call this strategy in the main function
     // let market: Market = Binance::new(Some(api_key.clone()), Some(api_secret.clone()));
     // basic_pepe_trading_strategy(&market, &account);
