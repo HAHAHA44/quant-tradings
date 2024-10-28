@@ -31,3 +31,5 @@ plotters = "0.3.1"
 
 # chrono 库用于处理日期和时间
 chrono = "0.4"
+
+binance_spot_connector_rust = "1.2.1"
