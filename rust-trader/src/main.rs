@@ -8,14 +8,26 @@ use binance::general::General;
 use binance::market;
 use binance::market::*;
 use binance::model::Balance;
-use trade_market::get_klines_and_plot_candlestick_chart;
 use binance::websockets::*;
-use std::sync::atomic::{AtomicBool};
+use std::sync::atomic::AtomicBool;
+use trade_market::get_klines_and_plot_candlestick_chart;
 
 const CSV_HEADERS: &str = "timestamp,asset,free_balance,locked_balance";
 const ACTIVE_SYMBOLS: &[&str] = &[
-    "PEPE", "BTC", "ETH", "BNB", "USDT", "ARB", "SOL", "SHIB", "DOGE", "OP", "ORDI",
+    "PEPE", "BTC", "ETH", "ARB", // "SOL",
+    "SHIB", "DOGE", // "OP",
+    "ORDI",
 ];
+
+const PAIR_SYMBOLS: &[&str] = &["btcusdt", "ethusdt", "pepeusdt", "arbusdt"];
+
+fn get_default_pair_symbol() -> Vec<String> {
+    ACTIVE_SYMBOLS
+        .iter()
+        .map(|symbol| format!("{}{}", symbol, "usdt"))
+        .collect::<Vec<String>>()
+}
+
 // Implement a basic quantitative trading algorithm for PEPEUSDT
 fn basic_pepe_trading_strategy(market: &Market, account: &Account) {
     println!("Starting basic quantitative trading strategy for PEPEUSDT");
@@ -135,23 +147,25 @@ fn is_active_symbol(symbol: &str) -> bool {
     ACTIVE_SYMBOLS.contains(&symbol)
 }
 
-
 fn websocket_ticker() {
     let keep_running = AtomicBool::new(true); // Used to control the event loop
     let agg_trade = format!("!ticker@arr"); // All Symbols
     let mut web_socket = WebSockets::new(|event: WebsocketEvent| {
-	match event {
-        // 24hr rolling window ticker statistics for all symbols that changed in an array.
-	    WebsocketEvent::DayTickerAll(ticker_events) => {
-	        for tick_event in ticker_events {
-		    if tick_event.symbol == "BTCUSDT" {
-			let btcusdt: f32 = tick_event.average_price.parse().unwrap();
-			let btcusdt_close: f32 = tick_event.current_close.parse().unwrap();
-			println!("{} - {}", btcusdt, btcusdt_close);
-		    }
-		}
-	    },
-	    _ => (),
+        match event {
+            // 24hr rolling window ticker statistics for all symbols that changed in an array.
+            // WebsocketEvent::DayTickerAll(ticker_events) => {
+            //     for tick_event in ticker_events {
+            //     if tick_event.symbol == "BTCUSDT" {
+            // 	let btcusdt: f32 = tick_event.average_price.parse().unwrap();
+            // 	let btcusdt_close: f32 = tick_event.current_close.parse().unwrap();
+            // 	println!("{} - {}", btcusdt, btcusdt_close);
+            //     }
+            // }
+            // },
+            WebsocketEvent::DayTicker(ticker_events) => {
+                println!("{:?}", ticker_events);
+            }
+            _ => (),
         };
 
         Ok(())
@@ -159,12 +173,12 @@ fn websocket_ticker() {
 
     web_socket.connect(&agg_trade).unwrap(); // check error
     if let Err(e) = web_socket.event_loop(&keep_running) {
-	match e {
-	    err => {
-	        println!("Error: {:?}", err);
-	    }
-	}
-     }
+        match e {
+            err => {
+                println!("Error: {:?}", err);
+            }
+        }
+    }
 }
 
 fn main() {
