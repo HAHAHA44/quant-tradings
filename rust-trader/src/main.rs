@@ -19,12 +19,10 @@ const ACTIVE_SYMBOLS: &[&str] = &[
     "ORDI",
 ];
 
-const PAIR_SYMBOLS: &[&str] = &["btcusdt", "ethusdt", "pepeusdt", "arbusdt"];
-
 fn get_default_pair_symbol() -> Vec<String> {
     ACTIVE_SYMBOLS
         .iter()
-        .map(|symbol| format!("{}{}", symbol, "usdt"))
+        .map(|symbol| format!("{}{}", symbol.to_lowercase(), "usdt"))
         .collect::<Vec<String>>()
 }
 
@@ -149,7 +147,14 @@ fn is_active_symbol(symbol: &str) -> bool {
 
 fn websocket_ticker() {
     let keep_running = AtomicBool::new(true); // Used to control the event loop
-    let agg_trade = format!("!ticker@arr"); // All Symbols
+    let subscribe_strings: Vec<String> = get_default_pair_symbol()
+        .iter()
+        .map(|symbol| format!("{}@ticker", symbol))
+        .collect();
+    let streams = subscribe_strings.join("/");
+
+    println!("{}", streams);
+    // let agg_trade = format!("!ticker@arr"); // All Symbols
     let mut web_socket = WebSockets::new(|event: WebsocketEvent| {
         match event {
             // 24hr rolling window ticker statistics for all symbols that changed in an array.
@@ -162,6 +167,36 @@ fn websocket_ticker() {
             //     }
             // }
             // },
+
+
+            /*
+             * WEBSOCKET RESPONSE:
+             * DayTickerEvent { 
+             * event_type: "24hrTicker", 
+             * event_time: 1730305854020, 
+             * symbol: "ARBUSDT", 
+             * price_change: "0.02090000", 
+             * price_change_percent: "3.849", 
+             * average_price: "0.55228457", 
+             * prev_close: "0.54310000", 
+             * current_close: "0.56390000", 
+             * current_close_qty: "20.80000000", 
+             * best_bid: "0.56390000", 
+             * best_bid_qty: "895.20000000", 
+             * best_ask: "0.56400000", 
+             * best_ask_qty: "12633.80000000", 
+             * open: "0.54300000", 
+             * high: "0.57000000", 
+             * low: "0.53730000", 
+             * volume: "87248777.30000000", 
+             * quote_volume: "48186153.71317000", 
+             * open_time: 1730219454020, 
+             * close_time: 1730305854020, 
+             * first_trade_id: 119258937, 
+             * last_trade_id: 119405080, 
+             * num_trades: 146144 
+             * }
+             */
             WebsocketEvent::DayTicker(ticker_events) => {
                 println!("{:?}", ticker_events);
             }
@@ -171,7 +206,7 @@ fn websocket_ticker() {
         Ok(())
     });
 
-    web_socket.connect(&agg_trade).unwrap(); // check error
+    web_socket.connect(&streams).unwrap(); // check error
     if let Err(e) = web_socket.event_loop(&keep_running) {
         match e {
             err => {
