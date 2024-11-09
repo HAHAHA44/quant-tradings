@@ -29,11 +29,11 @@ impl Client {
                 .unwrap(),
         }
     }
-
     pub fn get_signed<T: DeserializeOwned>(
         &self, endpoint: API, request: Option<String>,
     ) -> Result<T> {
         let url = self.sign_request(endpoint, request);
+        println!("Request URL: {}", url);
         let client = &self.inner_client;
         let response = client
             .get(url.as_str())

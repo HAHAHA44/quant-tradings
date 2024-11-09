@@ -1,3 +1,7 @@
+### Log
+
+11/10 It seems all Savings apis are not working.
+
 ```
 DayTickerEvent {
     // 事件类型，固定为 "24hrTicker"

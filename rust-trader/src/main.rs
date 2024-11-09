@@ -1,17 +1,16 @@
 mod common;
 mod trade_market;
 
-use binance::account::*;
-use binance::api::*;
+use binance::account::Account;
+use binance::api::Binance;
 use binance::config::Config;
 use binance::general::General;
-use binance::market;
 use binance::market::Market;
-use binance::model::Balance;
-use binance::websockets::WebSockets;
-use binance::websockets::WebsocketEvent;
-use common::symbol;
+use binance::savings::Savings;
+use binance::websockets::{WebSockets, WebsocketEvent};
 use std::sync::atomic::AtomicBool;
+
+use common::symbol;
 use trade_market::get_klines_and_plot_candlestick_chart;
 
 // Implement a basic quantitative trading algorithm for PEPEUSDT
@@ -166,7 +165,18 @@ fn main() {
     let general: General =
         Binance::new_with_config(Some(api_key.clone()), Some(api_secret.clone()), &config);
 
-    common::ledger_writer::record_balance_to_ledger(&account, &market);
+    let savings: Savings =
+        Binance::new_with_config(Some(api_key.clone()), Some(api_secret.clone()), &config);
+
+    // common::ledger_writer::record_balance_to_ledger(&account, &market);
+// https://testnet.binance.vision/api/v3/account?recvWindow=5000&timestamp=1731171940832&signature=a35de77a3dacf3ec54a04a5e69c588120722776ce649e3a9c2f3265fb0c2ce66
+    // general
+    // println!("{:?}", account.get_account());
+    // 打印当前交易费率
+    // println!("{:?}", savings.get_trade_fee(None));
+// https://testnet.binance.vision/sapi/v1/capital/config/getall?recvWindow=5000&timestamp=1731171940856&signature=91086054c89168caacd59687e883c9caea46f5222ab5f5ac1158c72172a80716
+    // println!("{:?}", savings.get_all_coins());
+
     // websocket_ticker();
 
     // Call this strategy in the main function
